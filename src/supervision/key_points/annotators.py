@@ -10,7 +10,7 @@ from supervision.annotators.core import _color_for_canvas
 from supervision.detection.utils.boxes import pad_boxes, spread_out_boxes
 from supervision.draw.base import ImageType
 from supervision.draw.color import Color
-from supervision.draw.utils import draw_rounded_rectangle
+from supervision.draw.utils import _color_for_scene, draw_rounded_rectangle
 from supervision.geometry.core import Rect
 from supervision.key_points.core import KeyPoints
 from supervision.key_points.skeletons import SKELETONS_BY_VERTEX_COUNT
@@ -129,7 +129,7 @@ class VertexAnnotator(BaseKeyPointAnnotator):
                     img=scene,
                     center=(int(x), int(y)),
                     radius=self.radius,
-                    color=self.color.as_bgr(),
+                    color=_color_for_scene(self.color, scene),
                     thickness=-1,
                 )
 
@@ -285,7 +285,7 @@ class EdgeAnnotator(BaseKeyPointAnnotator):
                     img=scene,
                     pt1=(int(xy_a[0]), int(xy_a[1])),
                     pt2=(int(xy_b[0]), int(xy_b[1])),
-                    color=self.color.as_bgr(),
+                    color=_color_for_scene(self.color, scene),
                     thickness=self.thickness,
                 )
 
@@ -495,7 +495,7 @@ class VertexEllipseAreaAnnotator(_BaseVertexEllipseAnnotator):
                     angle=angle,
                     startAngle=0,
                     endAngle=360,
-                    color=color.as_bgr(),
+                    color=_color_for_scene(color, scene),
                     thickness=-1,
                     lineType=cv2.LINE_AA,
                 )
@@ -596,7 +596,7 @@ class VertexEllipseOutlineAnnotator(_BaseVertexEllipseAnnotator):
                     angle=angle,
                     startAngle=0,
                     endAngle=360,
-                    color=color.as_bgr(),
+                    color=_color_for_scene(color, scene),
                     thickness=self.thickness,
                     lineType=cv2.LINE_AA,
                 )
@@ -952,7 +952,7 @@ class VertexLabelAnnotator:
                 org=(box[0], box[3]),
                 fontFace=font,
                 fontScale=self.text_scale,
-                color=text_color.as_bgr(),
+                color=_color_for_scene(text_color, scene),
                 thickness=self.text_thickness,
                 lineType=cv2.LINE_AA,
             )

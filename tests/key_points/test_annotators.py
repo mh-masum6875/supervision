@@ -899,6 +899,53 @@ class TestVertexLabelAnnotator:
             sv.VertexLabelAnnotator._resolve_color_list(colors, points_count)
 
 
+class TestOpaqueDrawingOnBgraScenes:
+    """Verify key point annotators keep what they draw on a BGRA scene opaque."""
+
+    @staticmethod
+    def _key_points() -> sv.KeyPoints:
+        """Return one skeleton of three points with a covariance for each."""
+        covariance = np.tile(
+            np.array([[60.0, 5.0], [5.0, 40.0]], dtype=np.float32), (1, 3, 1, 1)
+        )
+        return sv.KeyPoints(
+            xy=np.array([[[20, 20], [40, 30], [60, 45]]], dtype=np.float32),
+            confidence=np.array([[0.9, 0.8, 0.7]], dtype=np.float32),
+            class_id=np.array([0]),
+            data={"covariance": covariance},
+        )
+
+    @pytest.mark.parametrize(
+        "annotator",
+        [
+            pytest.param(sv.VertexAnnotator(), id="vertex"),
+            pytest.param(sv.EdgeAnnotator(edges=[(1, 2), (2, 3)]), id="edge"),
+            pytest.param(sv.VertexLabelAnnotator(), id="vertex-label"),
+            pytest.param(sv.VertexEllipseAreaAnnotator(), id="ellipse-area"),
+            pytest.param(sv.VertexEllipseOutlineAnnotator(), id="ellipse-outline"),
+        ],
+    )
+    def test_opaque_bgra_matches_bgr_scene(
+        self,
+        annotator: sv.VertexAnnotator
+        | sv.EdgeAnnotator
+        | sv.VertexLabelAnnotator
+        | sv.VertexEllipseAreaAnnotator
+        | sv.VertexEllipseOutlineAnnotator,
+    ) -> None:
+        """An opaque BGRA scene gets the colors of its BGR copy and stays opaque."""
+        bgr = np.full((70, 90, 3), 40, dtype=np.uint8)
+        scene = np.dstack([bgr, np.full((70, 90), 255, dtype=np.uint8)])
+        key_points = self._key_points()
+        expected = annotator.annotate(bgr.copy(), key_points)
+
+        result = annotator.annotate(scene, key_points)
+
+        np.testing.assert_array_equal(result[..., :3], expected)
+        assert not np.array_equal(result[..., :3], bgr)
+        assert (result[..., 3] == 255).all()
+
+
 class TestAnnotatorInputValidation:
     """Verify that all keypoint annotators reject invalid scene types."""
 
