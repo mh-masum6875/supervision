@@ -14,7 +14,7 @@ from supervision.config import CLASS_NAME_DATA_FIELD
 from supervision.detection.core import Detections
 from supervision.detection.utils.internal import cross_product
 from supervision.draw.color import Color
-from supervision.draw.utils import draw_rectangle, draw_text
+from supervision.draw.utils import _color_for_scene, draw_rectangle, draw_text
 from supervision.geometry.core import (
     CoordinatesTransformation,
     Point,
@@ -555,7 +555,7 @@ class LineZoneAnnotator:
             frame,
             line_start,
             line_end,
-            self.color.as_bgr(),
+            _color_for_scene(self.color, frame),
             self.thickness,
             lineType=cv2.LINE_AA,
             shift=0,
@@ -564,7 +564,7 @@ class LineZoneAnnotator:
             frame,
             line_start,
             radius=5,
-            color=self.text_color.as_bgr(),
+            color=_color_for_scene(self.text_color, frame),
             thickness=-1,
             lineType=cv2.LINE_AA,
         )
@@ -572,7 +572,7 @@ class LineZoneAnnotator:
             frame,
             line_end,
             radius=5,
-            color=self.text_color.as_bgr(),
+            color=_color_for_scene(self.text_color, frame),
             thickness=-1,
             lineType=cv2.LINE_AA,
         )
@@ -1028,7 +1028,7 @@ class LineZoneAnnotatorMulticlass:
                 org=(anchor_x, anchor_y),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=self.text_scale,
-                color=self.text_color.as_bgr(),
+                color=_color_for_scene(self.text_color, frame),
                 thickness=self.text_thickness,
                 lineType=cv2.LINE_AA,
             )

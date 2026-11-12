@@ -1709,3 +1709,55 @@ class TestLineZoneTriggerWithCoordTransform:
 
         with pytest.raises(ValueError, match="coord_transform must return"):
             line_zone.trigger(detections, coord_transform=_WrongShapeTransform())
+
+
+class TestLineZoneAnnotatorsOnBgraScenes:
+    """Verify line zone annotators keep what they draw on a BGRA scene opaque."""
+
+    @staticmethod
+    def _line_zone() -> LineZone:
+        """Return a horizontal line zone that one detection has crossed."""
+        line_zone = LineZone(Point(20, 120), Point(300, 120))
+        for y_min in (60.0, 130.0):
+            line_zone.trigger(
+                _create_detections(
+                    xyxy=[[100.0, y_min, 140.0, y_min + 30]], tracker_id=[1]
+                )
+            )
+        return line_zone
+
+    @pytest.mark.parametrize(
+        "annotator",
+        [
+            pytest.param(LineZoneAnnotator(), id="counts"),
+            pytest.param(
+                LineZoneAnnotator(display_in_count=False, display_out_count=False),
+                id="line-only",
+            ),
+        ],
+    )
+    def test_opaque_bgra_matches_bgr_scene(self, annotator: LineZoneAnnotator) -> None:
+        """An opaque BGRA frame gets the colors of its BGR copy and stays opaque."""
+        bgr = np.full((240, 320, 3), 40, dtype=np.uint8)
+        frame = np.dstack([bgr, np.full((240, 320), 255, dtype=np.uint8)])
+        line_zone = self._line_zone()
+        expected = annotator.annotate(bgr.copy(), line_zone)
+
+        result = annotator.annotate(frame, line_zone)
+
+        np.testing.assert_array_equal(result[..., :3], expected)
+        assert not np.array_equal(result[..., :3], bgr)
+        assert (result[..., 3] == 255).all()
+
+    def test_multiclass_table_keeps_opaque_bgra_scene_opaque(self) -> None:
+        """The multiclass count table leaves an opaque BGRA frame opaque."""
+        bgr = np.full((240, 320, 3), 40, dtype=np.uint8)
+        frame = np.dstack([bgr, np.full((240, 320), 255, dtype=np.uint8)])
+        line_zone = self._line_zone()
+        expected = LineZoneAnnotatorMulticlass().annotate(bgr.copy(), [line_zone])
+
+        result = LineZoneAnnotatorMulticlass().annotate(frame, [line_zone])
+
+        np.testing.assert_array_equal(result[..., :3], expected)
+        assert not np.array_equal(result[..., :3], bgr)
+        assert (result[..., 3] == 255).all()
