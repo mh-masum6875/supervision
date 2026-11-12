@@ -960,6 +960,79 @@ class TestSingleChannelMaskAnnotators:
         assert result.getpixel((2, 2)) == 50
 
 
+class TestOpaqueDrawingOnBgraScenes:
+    """Verify annotators that draw with OpenCV keep a BGRA scene opaque."""
+
+    @staticmethod
+    def _detections() -> Detections:
+        """Return two detections with every field the drawing annotators read."""
+        mask = np.zeros((2, 60, 80), dtype=bool)
+        mask[0, 10:35, 10:30] = True
+        mask[1, 20:50, 40:70] = True
+        oriented_boxes = np.array(
+            [
+                [[10, 10], [30, 12], [28, 35], [8, 33]],
+                [[40, 20], [70, 22], [68, 50], [38, 48]],
+            ],
+            dtype=np.float32,
+        )
+        return Detections(
+            xyxy=np.array([[10, 10, 30, 35], [40, 20, 70, 50]], dtype=np.float32),
+            confidence=np.array([0.9, 0.5]),
+            class_id=np.array([0, 1]),
+            tracker_id=np.array([1, 2]),
+            mask=mask,
+            data={ORIENTED_BOX_COORDINATES: oriented_boxes},
+        )
+
+    @pytest.mark.parametrize(
+        "annotator_type",
+        [
+            BoxAnnotator,
+            BoxCornerAnnotator,
+            CircleAnnotator,
+            ColorAnnotator,
+            DotAnnotator,
+            EllipseAnnotator,
+            LabelAnnotator,
+            OrientedBoxAnnotator,
+            PercentageBarAnnotator,
+            PolygonAnnotator,
+            RoundBoxAnnotator,
+            TriangleAnnotator,
+        ],
+    )
+    def test_opaque_bgra_matches_bgr_scene(
+        self, annotator_type: type[BaseAnnotator]
+    ) -> None:
+        """An opaque BGRA scene gets the colors of its BGR copy and stays opaque."""
+        bgr = np.full((60, 80, 3), 40, dtype=np.uint8)
+        scene = np.dstack([bgr, np.full((60, 80), 255, dtype=np.uint8)])
+        detections = self._detections()
+        expected = annotator_type().annotate(scene=bgr.copy(), detections=detections)
+
+        result = annotator_type().annotate(scene=scene, detections=detections)
+
+        np.testing.assert_array_equal(result[..., :3], expected)
+        assert not np.array_equal(result[..., :3], bgr)
+        assert (result[..., 3] == 255).all()
+
+    def test_trace_keeps_opaque_bgra_scene_opaque(self) -> None:
+        """A trace drawn over two frames leaves an opaque BGRA scene opaque."""
+        scene = np.full((60, 80, 4), 40, dtype=np.uint8)
+        scene[..., 3] = 255
+        detections = self._detections()
+        moved = self._detections()
+        moved.xyxy = moved.xyxy + 8
+        annotator = TraceAnnotator()
+        annotator.annotate(scene=scene.copy(), detections=detections)
+
+        result = annotator.annotate(scene=scene, detections=moved)
+
+        assert not np.array_equal(result[..., :3], np.full((60, 80, 3), 40))
+        assert (result[..., 3] == 255).all()
+
+
 class TestPaintMasksByArea:
     """Tests for the _paint_masks_by_area helper function."""
 
